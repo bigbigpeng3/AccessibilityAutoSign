@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">AccessibilityAutoSign</string>
+    <string name="demo">auto</string>
 </resources>
