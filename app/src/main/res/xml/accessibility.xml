@@ -5,4 +5,5 @@
     android:accessibilityFeedbackType="feedbackSpoken"
     android:canRetrieveWindowContent="true"
     android:description="@string/demo"
+    android:canPerformGestures="true"
     android:notificationTimeout="1000"/>

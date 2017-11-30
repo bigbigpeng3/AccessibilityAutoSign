@@ -7,6 +7,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
@@ -32,6 +33,17 @@ public class BaseAccessibilityService extends AccessibilityService {
             mInstance = new BaseAccessibilityService();
         }
         return mInstance;
+    }
+
+    public static final String AUTO_SIGN_SP_NAME = "AUTO_SIGN";
+    public void saveLongSP(String saveSPKeyName, long time){
+        SharedPreferences sharedPreferences = getSharedPreferences(AUTO_SIGN_SP_NAME, MODE_PRIVATE);
+        sharedPreferences.edit().putLong(saveSPKeyName,time).apply();
+    }
+
+    public long getLongSP(String getSPKeyName,long defaultTime){
+        SharedPreferences sharedPreferences = getSharedPreferences(AUTO_SIGN_SP_NAME, MODE_PRIVATE);
+        return sharedPreferences.getLong(getSPKeyName,defaultTime);
     }
 
     /**

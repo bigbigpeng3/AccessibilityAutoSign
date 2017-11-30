@@ -1,12 +1,19 @@
 package com.pengzhangdemo.com.accessibilityautosign;
 
-import android.content.ClipData;
-import android.content.ClipboardManager;
+import android.accessibilityservice.GestureDescription;
+import android.graphics.Path;
+import android.graphics.Rect;
+import android.os.Handler;
+import android.os.Message;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 
 import com.pengzhangdemo.com.accessibilityautosign.utils.BaseAccessibilityService;
+
+import java.util.Calendar;
+import java.util.Date;
 
 
 public class AutoSignAccessibilityService extends BaseAccessibilityService {
@@ -19,17 +26,14 @@ public class AutoSignAccessibilityService extends BaseAccessibilityService {
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
         mPackageName = event.getPackageName().toString();
-        Log.e(TAG, "onAccessibilityEvent: " + mPackageName);
+        Log.e(TAG, "onAccessibilityEvent: " + mPackageName + Thread.currentThread().getName());
         if ("com.jingdong.app.mall".equals(mPackageName)) {
-
-
-            AccessibilityNodeInfo ling = findViewByText("领京豆");
-            if (ling != null) {
-                ling.getParent().performAction(AccessibilityNodeInfo.ACTION_CLICK);
+            if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+                gotoGetBeansActivity();
+//                performDownScroll();
             }
 
-
-            findAllView();
+//            findAllView();
 
 //            mQian = findViewByText("签到领京豆");
 //            mQian = findViewByText("做任务");
@@ -46,48 +50,135 @@ public class AutoSignAccessibilityService extends BaseAccessibilityService {
 //                goThrough(rootNode);
 //            }
 
-
         }
     }
 
-    private boolean goThrough(AccessibilityNodeInfo info) {
-        if (info.getChildCount() == 0) {
-            if (info.getText() != null && info.getText().toString().contains("搜索")) {
-                if ("在沪江网校中搜索".equals(info.getText().toString()) && "android.widget.TextView".equals(info.getClassName())) {
-                    AccessibilityNodeInfo parent = info;
-                    while (parent != null) {
-                        if (parent.isClickable()) {
-                            parent.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-                            break;
-                        }
-                        parent = parent.getParent();
-                    }
-                } else if ("输入关键字搜索".equals(info.getText().toString()) && "android.widget.EditText".equals(info.getClassName())) {
-                    ClipboardManager clipboardManager = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-                    ClipData clipData = ClipData.newPlainText("paste", "雅思英语");
-                    clipboardManager.setPrimaryClip(clipData);
-                    info.performAction(AccessibilityNodeInfo.ACTION_PASTE);
-                } else if ("搜索".equals(info.getText().toString()) && "android.widget.TextView".equals(info.getClassName())) {
-                    AccessibilityNodeInfo parent = info;
-                    while (parent != null) {
-                        if (parent.isClickable()) {
-                            parent.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-                            break;
-                        }
-                        parent = parent.getParent();
-                    }
-                    return true;
-                }
-            }
-        } else {
-            for (int i = 0; i < info.getChildCount(); i++) {
-                if (info.getChild(i) != null) {
-                    goThrough(info.getChild(i));
-                }
+    private Handler mHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            switch (msg.what) {
+                case MSG_CLICK_GET_BEANS_BTN:
+                    clickSignInGetBeansBtn();
+                    break;
+                case MSG_PERFORM_DOWN_SCROLL:
+                    performDownScroll();
+                    break;
             }
         }
-        return false;
+    };
+
+    public static final int MSG_GOTO_GET_BEANS_ACTIVITY = -150;
+    private long gotoGetBeansActivityTime = 0;
+
+    private void gotoGetBeansActivity() {
+        if (!isSuccessfulSignInBeans) {
+            long currentTimeMillis = System.currentTimeMillis();
+            if (currentTimeMillis - gotoGetBeansActivityTime > 5000) {
+                gotoGetBeansActivityTime = currentTimeMillis;
+            } else {
+                return;
+            }
+            AccessibilityNodeInfo ling = findViewByText("领京豆");
+            if (ling != null) {
+                ling.getParent().performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                mHandler.sendEmptyMessageDelayed(MSG_CLICK_GET_BEANS_BTN, 2000);
+            }
+        }
     }
+
+    public static final int MSG_CLICK_GET_BEANS_BTN = -151;
+    private boolean isSuccessfulSignInBeans = false;
+    private long successfulSignInBeansTime = 0;
+
+    private void clickSignInGetBeansBtn() {
+        if (successfulSignInBeansTime == 0) {
+            successfulSignInBeansTime = getLongSP(SIGN_BEANS_NAME, 0);
+        }
+        if (successfulSignInBeansTime == 0 || isTodayEnd(successfulSignInBeansTime)) {
+            AccessibilityNodeInfo qian = findViewByText("签到领京豆");
+            if (qian != null) {
+                GestureDescription.Builder builder = new GestureDescription.Builder();
+                Path path = new Path();
+                Rect outBounds = new Rect();
+                qian.getBoundsInScreen(outBounds);
+                path.moveTo(outBounds.centerX(), outBounds.centerY());
+                GestureDescription gestureDescription = builder
+                        .addStroke(new GestureDescription.StrokeDescription(path, 100, 50))
+                        .build();
+                dispatchGesture(gestureDescription, null, null);
+                isSuccessfulSignInBeans = true;
+                successfulSignInBeansTime = System.currentTimeMillis();
+                saveLongSP(SIGN_BEANS_NAME, successfulSignInBeansTime);
+            } else {
+                isSuccessfulSignInBeans = true;
+            }
+        }
+        performBackClick();
+        mHandler.sendEmptyMessageDelayed(MSG_PERFORM_DOWN_SCROLL, 2000);
+    }
+
+    public static final int MSG_PERFORM_DOWN_SCROLL = -152;
+
+    private void performDownScroll() {
+//        performScrollForward();
+//        performScrollBackward();
+        GestureDescription.Builder builder = new GestureDescription.Builder();
+        Path path = new Path();
+        DisplayMetrics displayMetrics = getResources().getDisplayMetrics();
+        int y = displayMetrics.heightPixels / 2;
+        int x = displayMetrics.widthPixels / 2;
+        path.moveTo(x, y);
+        path.lineTo(x, y + 300*displayMetrics.density);
+        Log.e(TAG, "performDownScroll: " + x + "|" + y);
+        GestureDescription gestureDescription = builder
+                .addStroke(new GestureDescription.StrokeDescription(path, 10, 500))
+                .build();
+        dispatchGesture(gestureDescription, new GestureResultCallback() {
+            @Override
+            public void onCompleted(GestureDescription gestureDescription) {
+                super.onCompleted(gestureDescription);
+                Log.e(TAG, "onCompleted: " + gestureDescription);
+            }
+
+            @Override
+            public void onCancelled(GestureDescription gestureDescription) {
+                super.onCancelled(gestureDescription);
+                Log.e(TAG, "onCancelled: " + gestureDescription);
+            }
+        }, null);
+//        GestureDescription gestureDescription1 = builder
+//                .addStroke(new GestureDescription.StrokeDescription(path, 100, 50))
+//                .build();
+//        dispatchGesture(gestureDescription1, new GestureResultCallback() {
+//            @Override
+//            public void onCompleted(GestureDescription gestureDescription) {
+//                super.onCompleted(gestureDescription);
+//                Log.e(TAG, "onCompleted: " + gestureDescription);
+//            }
+//
+//            @Override
+//            public void onCancelled(GestureDescription gestureDescription) {
+//                super.onCancelled(gestureDescription);
+//                Log.e(TAG, "onCancelled: " + gestureDescription);
+//            }
+//        }, null);
+    }
+
+    private Calendar calendar = Calendar.getInstance();
+
+    public boolean isTodayEnd(long currTime) {
+        long currentTimeMillis = System.currentTimeMillis();
+        calendar.setTime(new Date(currTime));
+        int year = calendar.get(Calendar.YEAR);
+        int month = calendar.get(Calendar.MONTH);
+        int day = calendar.get(Calendar.DAY_OF_MONTH);
+        calendar.set(year, month, day, 23, 59, 59);
+        return currentTimeMillis > calendar.getTimeInMillis();
+    }
+
+
+    public static final String SIGN_BEANS_NAME = "SIGN_BEANS_NAME";
 
 
     public void findAllView() {

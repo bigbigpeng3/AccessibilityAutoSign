@@ -11,7 +11,14 @@
     <Button
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:onClick="goAccess"
+        android:text="Open Accessibility"/>
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:onClick="autoSign"
         android:text="Auto JD Sign"/>
+
 
 </LinearLayout>
