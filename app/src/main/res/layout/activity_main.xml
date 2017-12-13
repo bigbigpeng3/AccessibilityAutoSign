@@ -15,10 +15,15 @@
         android:text="Open Accessibility"/>
 
     <Button
+        android:id="@+id/jd"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:onClick="autoSign"
         android:text="Auto JD Sign"/>
+    <Button
+        android:id="@+id/ali"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Auto Alipay Sign"/>
 
 
 </LinearLayout>

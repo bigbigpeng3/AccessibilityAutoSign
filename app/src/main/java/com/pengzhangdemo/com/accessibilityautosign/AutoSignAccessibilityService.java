@@ -26,30 +26,14 @@ public class AutoSignAccessibilityService extends BaseAccessibilityService {
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
         mPackageName = event.getPackageName().toString();
-        Log.e(TAG, "onAccessibilityEvent: " + mPackageName + Thread.currentThread().getName());
+        Log.e(TAG, "onAccessibilityEvent: " + mPackageName);
         if ("com.jingdong.app.mall".equals(mPackageName)) {
             if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
                 gotoGetBeansActivity();
-//                performDownScroll();
             }
-
-//            findAllView();
-
-//            mQian = findViewByText("签到领京豆");
-//            mQian = findViewByText("做任务");
-//            AccessibilityNodeInfo parent = mQian.getParent();
-//            if (parent != null){
-//                parent.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-//                for (int i = 0; i < parent.getChildCount(); i++) {
-//                    parent.getChild(i).performAction(AccessibilityNodeInfo.ACTION_CLICK);
-//                }
-//            }
-
-
-//                AccessibilityNodeInfo rootNode = getRootInActiveWindow();
-//                goThrough(rootNode);
-//            }
-
+        } else if ("com.taobao.mobile.dipei".equals(mPackageName)) {
+//            gotoKouBeiPage();
+            mHandler.sendEmptyMessageDelayed(MSG_GOTO_KOU_BEI_ACTIVITY,5000);
         }
     }
 
@@ -64,11 +48,54 @@ public class AutoSignAccessibilityService extends BaseAccessibilityService {
                 case MSG_PERFORM_DOWN_SCROLL:
                     performDownScroll();
                     break;
+                case MSG_GOTO_KOU_BEI_ACTIVITY:
+                    gotoKouBeiPage();
+                    break;
             }
         }
     };
 
-    public static final int MSG_GOTO_GET_BEANS_ACTIVITY = -150;
+
+    //--------------------------支付宝------------------------------------//
+
+    public static final int MSG_GOTO_KOU_BEI_ACTIVITY = -150;
+    private long gotoKouBeiActivityTime = 0;
+    private int gotoKouBeiCount = 0;
+    private boolean successfulKouBei = false;
+
+    private void gotoKouBeiPage() {
+        if (gotoKouBeiCount < 3 && !successfulKouBei) {
+            long currentTimeMillis = System.currentTimeMillis();
+            if (currentTimeMillis - gotoKouBeiActivityTime > 5000) {
+                gotoKouBeiActivityTime = currentTimeMillis;
+            } else {
+                return;
+            }
+            AccessibilityNodeInfo ling = findViewByText("签到");
+            Log.e(TAG, "gotoKouBeiPage: " + ling);
+            if (ling != null) {
+                GestureDescription.Builder builder = new GestureDescription.Builder();
+                Path path = new Path();
+                Rect outBounds = new Rect();
+                ling.getParent().getBoundsInScreen(outBounds);
+                path.moveTo(outBounds.centerX(), outBounds.centerY());
+                GestureDescription gestureDescription = builder
+                        .addStroke(new GestureDescription.StrokeDescription(path, 100, 50))
+                        .build();
+                dispatchGesture(gestureDescription, null, null);
+                successfulKouBei = true;
+            } else {
+                mHandler.sendEmptyMessageDelayed(MSG_GOTO_KOU_BEI_ACTIVITY, 5000);
+            }
+            gotoKouBeiCount++;
+        }
+
+    }
+
+    //--------------------------支付宝------------------------------------//
+
+    //--------------------------京东--------------------------------------//
+
     private long gotoGetBeansActivityTime = 0;
 
     private void gotoGetBeansActivity() {
@@ -86,6 +113,7 @@ public class AutoSignAccessibilityService extends BaseAccessibilityService {
             }
         }
     }
+
 
     public static final int MSG_CLICK_GET_BEANS_BTN = -151;
     private boolean isSuccessfulSignInBeans = false;
@@ -121,15 +149,13 @@ public class AutoSignAccessibilityService extends BaseAccessibilityService {
     public static final int MSG_PERFORM_DOWN_SCROLL = -152;
 
     private void performDownScroll() {
-//        performScrollForward();
-//        performScrollBackward();
         GestureDescription.Builder builder = new GestureDescription.Builder();
         Path path = new Path();
         DisplayMetrics displayMetrics = getResources().getDisplayMetrics();
         int y = displayMetrics.heightPixels / 2;
         int x = displayMetrics.widthPixels / 2;
         path.moveTo(x, y);
-        path.lineTo(x, y + 300*displayMetrics.density);
+        path.lineTo(x, y + 300 * displayMetrics.density);
         Log.e(TAG, "performDownScroll: " + x + "|" + y);
         GestureDescription gestureDescription = builder
                 .addStroke(new GestureDescription.StrokeDescription(path, 10, 500))
@@ -147,22 +173,6 @@ public class AutoSignAccessibilityService extends BaseAccessibilityService {
                 Log.e(TAG, "onCancelled: " + gestureDescription);
             }
         }, null);
-//        GestureDescription gestureDescription1 = builder
-//                .addStroke(new GestureDescription.StrokeDescription(path, 100, 50))
-//                .build();
-//        dispatchGesture(gestureDescription1, new GestureResultCallback() {
-//            @Override
-//            public void onCompleted(GestureDescription gestureDescription) {
-//                super.onCompleted(gestureDescription);
-//                Log.e(TAG, "onCompleted: " + gestureDescription);
-//            }
-//
-//            @Override
-//            public void onCancelled(GestureDescription gestureDescription) {
-//                super.onCancelled(gestureDescription);
-//                Log.e(TAG, "onCancelled: " + gestureDescription);
-//            }
-//        }, null);
     }
 
     private Calendar calendar = Calendar.getInstance();
@@ -177,9 +187,10 @@ public class AutoSignAccessibilityService extends BaseAccessibilityService {
         return currentTimeMillis > calendar.getTimeInMillis();
     }
 
-
     public static final String SIGN_BEANS_NAME = "SIGN_BEANS_NAME";
 
+
+    //--------------------------京东--------------------------------------//
 
     public void findAllView() {
         AccessibilityNodeInfo accessibilityNodeInfo = getRootInActiveWindow();
